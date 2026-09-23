@@ -14,10 +14,22 @@
     "happy-dom": "npm:happy-dom@^20"
   },
   "compilerOptions": {
-    "lib": ["dom", "dom.iterable", "esnext", "deno.ns"]
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext",
+      "deno.ns"
+    ]
   },
-  "exclude": ["dist"],
+  "exclude": [
+    "dist"
+  ],
   "publish": {
-    "exclude": ["src/*_test.ts", "scripts", "example", ".github"]
+    "exclude": [
+      "src/*_test.ts",
+      "scripts",
+      "example",
+      ".github"
+    ]
   }
 }
