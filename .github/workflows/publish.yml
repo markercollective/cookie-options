@@ -1,0 +1,32 @@
+name: Publish
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Check tag matches deno.json version
+        run: |
+          version=$(deno eval 'console.log(JSON.parse(Deno.readTextFileSync("deno.json")).version)')
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match deno.json version $version"
+            exit 1
+          fi
+      - run: deno task check
+      - run: deno task test
+      - run: deno task bundle
+      - run: deno publish
+      - run: gh release create "$GITHUB_REF_NAME" dist/cookie-options.js --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

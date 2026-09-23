@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>cookie-options example</title>
+    <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 40rem;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+    fieldset {
+      margin-top: 1.5rem;
+    }
+    #banner {
+      border: 1px solid #999;
+      padding: 1rem;
+    }
+    [hidden] {
+      display: none !important;
+    }
+    </style>
+    <script type="text/plain" data-cookie-optional>
+      console.log("optional script ran");
+      document.cookie = "optional=1; max-age=3600";
+    </script>
+  </head>
+  <body>
+    <h1>cookie-options</h1>
+    <p>State: <strong id="state">pending</strong></p>
+
+    <div id="banner" hidden>
+      <p>We use optional cookies for analytics. Full details are in our cookie policy.</p>
+      <button id="accept">Accept all</button>
+      <button id="reject">Reject all</button>
+    </div>
+
+    <fieldset id="preferences" hidden>
+      <legend>Cookie preferences</legend>
+      <p>Optional cookies are <strong id="status"></strong>. <span id="chosen-at"></span></p>
+      <button id="opt-in" hidden>Turn on optional cookies</button>
+      <button id="opt-out" hidden>Turn off optional cookies</button>
+      <button id="forget" hidden>Forget my choice</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>Demo only: pretend I'm in</legend>
+      <select id="location">
+        <option value="">my real location</option>
+        <option value="us">the US</option>
+        <option value="ca-qc">Canada (Quebec)</option>
+        <option value="ca">Canada (outside Quebec)</option>
+        <option value="eu">the EU</option>
+      </select>
+      <p><small>Changing this forgets your choice and reloads.</small></p>
+    </fieldset>
+
+    <script type="module">
+    import {
+      clearConsent,
+      getRecord,
+      init,
+      setConsent,
+      subscribe,
+    } from "../dist/cookie-options.js";
+
+    const $ = (id) => document.getElementById(id);
+
+    subscribe((state) => {
+      $("state").textContent = state;
+      $("banner").hidden = state !== "unchosen";
+      $("preferences").hidden = state === "pending" || state === "unchosen";
+      $("status").textContent = state === "opted-in" ? "on" : "off";
+      $("opt-in").hidden = state !== "opted-out";
+      $("opt-out").hidden = state !== "opted-in";
+      const record = getRecord();
+      $("forget").hidden = !record;
+      $("chosen-at").textContent = record
+        ? `You chose this on ${new Date(record.at).toLocaleString()}.`
+        : "This is the default for your location.";
+    });
+
+    $("accept").onclick = () => setConsent("opted-in");
+    $("opt-in").onclick = () => setConsent("opted-in");
+    $("reject").onclick = () => setConsent("opted-out");
+    $("opt-out").onclick = () => setConsent("opted-out");
+    $("forget").onclick = () => clearConsent();
+
+    // Your real policy. Which places allow opt-out is your call.
+    const optInByDefault = (geo) =>
+      geo?.country === "US" ||
+      (geo?.country === "CA" && geo.region !== "Quebec");
+
+    // Demo-only location override, applied before the policy sees the lookup.
+    const DEMO_LOCATIONS = {
+      us: { country: "US", region: "Michigan" },
+      "ca-qc": { country: "CA", region: "Quebec" },
+      ca: { country: "CA", region: "Ontario" },
+      eu: { country: "DE", region: "Berlin" },
+    };
+    const override = sessionStorage.getItem("demo-location") ?? "";
+    $("location").value = override;
+    $("location").onchange = (e) => {
+      sessionStorage.setItem("demo-location", e.target.value);
+      clearConsent();
+    };
+
+    init({
+      optInByDefault: (geo) => optInByDefault(DEMO_LOCATIONS[override] ?? geo),
+    });
+    </script>
+  </body>
+</html>
