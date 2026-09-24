@@ -28,7 +28,8 @@ export type Consent = "opted-in" | "opted-out";
  * The current consent state.
  *
  * - `pending`: `init()` is still resolving (reading storage / geolocating).
- * - `unchosen`: no usable stored choice and the default policy says to ask.
+ * - `unchosen`: the visitor must be asked: no usable stored choice and the
+ *   default policy says to ask, or `resetConsent()` was called.
  * - `opted-in`: stored choice, or the default policy allowed it.
  * - `opted-out`: stored choice, or the browser sent a Global Privacy Control signal.
  */
@@ -45,9 +46,9 @@ export interface Geo {
   region: string;
 }
 
-/** What is stored when the visitor makes a choice. */
+/** What is stored when the visitor makes a choice or asks to be asked again. */
 export interface ConsentRecord {
-  consent: Consent;
+  consent: Consent | "unchosen";
   /** ISO 8601 timestamp of the choice. */
   at: string;
   /** The `version` option in effect when the choice was made. */
@@ -108,7 +109,7 @@ export function getRecord(): ConsentRecord | null {
     if (!raw) return null;
     const record: Partial<ConsentRecord> = JSON.parse(raw);
     const valid = (record.consent === "opted-in" ||
-      record.consent === "opted-out") &&
+      record.consent === "opted-out" || record.consent === "unchosen") &&
       record.version === options.version &&
       typeof record.at === "string" &&
       Date.now() - Date.parse(record.at) < options.maxAgeDays * DAY_MS;
@@ -174,12 +175,7 @@ export async function init(opts: Options): Promise<State> {
  * Opting out after scripts have already run reloads the page so they stop.
  */
 export function setConsent(consent: Consent): void {
-  const record: ConsentRecord = {
-    consent,
-    at: new Date().toISOString(),
-    version: options.version,
-  };
-  localStorage.setItem(options.storageKey, JSON.stringify(record));
+  store(consent);
   if (consent === "opted-out" && scriptsLoaded) {
     location.reload();
     return;
@@ -189,12 +185,21 @@ export function setConsent(consent: Consent): void {
 }
 
 /**
- * Forgets the visitor's stored choice and reloads the page, so their state is
- * resolved from scratch as if they had never chosen.
+ * Forgets the visitor's choice and reloads the page in the `unchosen` state,
+ * so they are asked again even where the default policy would opt them in.
  */
-export function clearConsent(): void {
-  localStorage.removeItem(options.storageKey);
+export function resetConsent(): void {
+  store("unchosen");
   location.reload();
+}
+
+function store(consent: ConsentRecord["consent"]): void {
+  const record: ConsentRecord = {
+    consent,
+    at: new Date().toISOString(),
+    version: options.version,
+  };
+  localStorage.setItem(options.storageKey, JSON.stringify(record));
 }
 
 function hasGlobalPrivacyControl(): boolean {

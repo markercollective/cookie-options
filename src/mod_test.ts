@@ -1,12 +1,12 @@
 import { Window } from "happy-dom";
 import { assertEquals, assertMatch, assertRejects } from "@std/assert";
 import {
-  clearConsent,
   type ConsentRecord,
   type Geo,
   getRecord,
   getState,
   init,
+  resetConsent,
   setConsent,
   subscribe,
 } from "./mod.ts";
@@ -195,12 +195,22 @@ Deno.test("opting out before scripts ran does not reload", async () => {
   assertEquals(calls.reload, 0);
 });
 
-Deno.test("clearConsent forgets the choice and reloads", async () => {
-  const { win, calls } = setup({ stored: { consent: "opted-out" } });
+Deno.test("resetConsent stores unchosen and reloads", async () => {
+  const { win, calls } = setup({ stored: { consent: "opted-in" } });
   await init({ optInByDefault: US });
-  clearConsent();
-  assertEquals(stored(win), null);
+  resetConsent();
+  assertEquals(stored(win)?.consent, "unchosen");
   assertEquals(calls.reload, 1);
+});
+
+Deno.test("a stored unchosen asks again even where the default is opt-in", async () => {
+  const { win, calls } = setup({
+    stored: { consent: "unchosen" },
+    country: "US",
+  });
+  assertEquals(await init({ optInByDefault: US }), "unchosen");
+  assertEquals(calls.fetch, 0);
+  assertEquals(liveScripts(win).length, 0);
 });
 
 Deno.test("a stored choice for an older version is discarded", async () => {

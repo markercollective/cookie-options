@@ -104,9 +104,12 @@ Returning `false` for `undefined` (a failed lookup) is the safe choice.
   change; returns an unsubscribe function.
 - `getState()` – the current state:
   `"pending" | "unchosen" | "opted-in" | "opted-out"`.
-- `getRecord()` – the stored `{ consent, at, version }`, or `null`.
+- `getRecord()` – the stored `{ consent, at, version }`, or `null`. `consent` is
+  `"unchosen"` after a reset.
 - `setConsent("opted-in" | "opted-out")` – stores the visitor's choice.
-- `clearConsent()` – forgets the stored choice and reloads the page.
+- `resetConsent()` – forgets the stored choice and reloads the page in the
+  `unchosen` state, so the visitor is asked again even where `optInByDefault`
+  would opt them in. Wire this to a "cookie preferences" link.
 
 ## Development
 

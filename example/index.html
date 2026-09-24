@@ -58,9 +58,9 @@
 
     <script type="module">
     import {
-      clearConsent,
       getRecord,
       init,
+      resetConsent,
       setConsent,
       subscribe,
     } from "../dist/cookie-options.js";
@@ -75,8 +75,9 @@
       $("opt-in").hidden = state !== "opted-out";
       $("opt-out").hidden = state !== "opted-in";
       const record = getRecord();
-      $("forget").hidden = !record;
-      $("chosen-at").textContent = record
+      const chosen = record && record.consent !== "unchosen";
+      $("forget").hidden = !chosen;
+      $("chosen-at").textContent = chosen
         ? `You chose this on ${new Date(record.at).toLocaleString()}.`
         : "This is the default for your location.";
     });
@@ -85,7 +86,7 @@
     $("opt-in").onclick = () => setConsent("opted-in");
     $("reject").onclick = () => setConsent("opted-out");
     $("opt-out").onclick = () => setConsent("opted-out");
-    $("forget").onclick = () => clearConsent();
+    $("forget").onclick = () => resetConsent();
 
     // Your real policy. Which places allow opt-out is your call.
     const optInByDefault = (geo) =>
@@ -103,7 +104,9 @@
     $("location").value = override;
     $("location").onchange = (e) => {
       sessionStorage.setItem("demo-location", e.target.value);
-      clearConsent();
+      // Demo only: drop the stored choice so the new location's default shows.
+      localStorage.removeItem("cookie-options");
+      location.reload();
     };
 
     init({
